@@ -3,22 +3,34 @@
 namespace App\Http\Controllers\Book;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Book\StoreBookRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Models\Book;
+use Illuminate\Http\RedirectResponse;
 
 class BookController extends Controller
 {
-  public function getAll(Request $request): Response
+  public function index(Request $request): Response
   {
-    $page = $request->query('page', 1);
-    $all_books = Book::all();
-    $total_pages = ceil(sizeof($all_books) / 10);
-    $books = array_slice($all_books, ($page - 1) * 10, 10);
+    $query = Book::query()
+      ->when(
+        $request->search,
+        function ($search) use ($request) {
+          return $search
+            ->where('title', 'like', "%{$request['search']}%")
+            ->orWhere('description', 'like', "%{$request['search']}%")
+            ->orWhere('author', 'like', "%{$request['search']}%")
+            ->orderByDesc('created_at');
+        },
+        function ($search) {
+          return $search->orderByDesc('created_at');
+        }
+      );
+    $books = $query->paginate(10);
     return Inertia::render('books/list', [
-      'books' => $books,
-      'total_pages' => $total_pages
+      'books' => $books
     ]);
   }
   public function show(Request $request): Response
@@ -27,5 +39,11 @@ class BookController extends Controller
     return Inertia::render('books/details', [
       'book' => $current_book
     ]);
+  }
+  public function create(StoreBookRequest $request): RedirectResponse
+  {
+    $validated = $request->validated();
+    $created_book = Book::create($validated);
+    return Inertia::location('/books/' . $created_book->id);
   }
 }
