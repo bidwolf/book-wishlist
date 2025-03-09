@@ -15,7 +15,6 @@ import React, { ChangeEventHandler, FocusEventHandler, FormEventHandler, useCall
 
 type BookPageProps = { books: { data: Book[] } & Pagination }
 export default function Books({ books }: BookPageProps) {
-  console.log(books)
   const breadcrumbs: BreadcrumbItem[] = [
     {
       title: 'Books',
@@ -73,7 +72,12 @@ export default function Books({ books }: BookPageProps) {
                     <Icon iconNode={XIcon} size={8} className="absolute right-1 top-[50%] -translate-[50%] visible duration-500 transition-opacity group-has-placeholder-shown:invisible group-has-placeholder-shown:opacity-0 group-has-autofill:text-emerald-500" />
                   </Label>
                 </Field>
-                <CreateBookForm />
+                <CreateBookForm trigger={
+                  <Button size={"sm"} variant={'ghost'} className="bg-sky-300 text-sky-800 hover:bg-sky-200 active:bg-sky-200 transition-colors active:text-sky-800 hover:text-sky-800">
+                    <Icon iconNode={PlusIcon} size={8} />
+                    Adicionar um livro
+                  </Button>
+                } />
               </div>
             </caption>
             <thead className="text-center border-b border-foreground/20 bg-accent text-accent-foreground ">
@@ -88,39 +92,39 @@ export default function Books({ books }: BookPageProps) {
             </thead>
             <tbody className=" *:bg-accent *:even:bg-accent/80">
               {books.data.length > 0 ? books.data.map(book => (
-                <tr className="*:p-2 hover:bg-gradient-to-tr from-accent to-primary/10 via-emerald-950/10 hover:cursor-pointer" key={book.ISBN}>
+                <tr className="*:p-2 hover:bg-gradient-to-tr from-accent to-primary/10 via-emerald-950/10 hover:cursor-pointer" key={book.ISBN + book.title}>
                   <td onClick={
                     (e) => {
                       router.get(
-                        `books/${book.ISBN}`
+                        `books/${book.id}`
                       )
                     }
                   } scope="row" className="text-center animate-fadeInLeft duration-700 text-ellipsis max-w-64 overflow-hidden whitespace-nowrap">{book.title}</td>
                   <td onClick={
                     (e) => {
                       router.get(
-                        `books/${book.ISBN}`
+                        `books/${book.id}`
                       )
                     }
                   } scope="row" className="text-center animate-fadeInLeft duration-700 text-ellipsis max-w-64 overflow-hidden whitespace-nowrap">{book.author}</td>
                   <td onClick={
                     (e) => {
                       router.get(
-                        `books/${book.ISBN}`
+                        `books/${book.id}`
                       )
                     }
                   } scope="row" className="text-center animate-fadeInLeft duration-700 text-ellipsis max-w-64 overflow-hidden whitespace-nowrap">{book.description}</td>
                   <td onClick={
                     (e) => {
                       router.get(
-                        `books/${book.ISBN}`
+                        `books/${book.id}`
                       )
                     }
                   } scope="row" className="text-center animate-fadeInLeft duration-700 text-ellipsis max-w-64 overflow-hidden whitespace-nowrap">{book.genre}</td>
                   <td onClick={
                     (e) => {
                       router.get(
-                        `books/${book.ISBN}`
+                        `books/${book.id}`
                       )
                     }
                   } scope="row" className="text-center animate-fadeInLeft duration-700 text-ellipsis max-w-64 overflow-hidden whitespace-nowrap">{book.release_date}</td>
@@ -133,13 +137,14 @@ export default function Books({ books }: BookPageProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuGroup>
                         <DropdownMenuContent >
-                          <DropdownMenuItem>
-                            <>
-                              <Icon iconNode={PencilIcon} size={9} />
-                              <span className="">
-                                Editar
-                              </span>
-                            </>
+                          <DropdownMenuItem asChild className="p-0">
+                            <UpdateBookForm book={book} trigger={
+                              <Button variant={"ghost"} className="w-full flex justify-start">
+                                <Icon iconNode={PencilIcon} size={9} />
+                                <span className="">
+                                  Editar
+                                </span>
+                              </Button>} />
                           </DropdownMenuItem>
                           <DropdownMenuItem variant="destructive">
                             <>
@@ -177,7 +182,7 @@ export default function Books({ books }: BookPageProps) {
             <div className="flex items-center justify-center gap-4">
               {
                 books.links.map(l => (
-                  <button data-active={l.active} onClick={() => goToPage(l.url)} className="text-xs border rounded h-6 w-6 font-medium transition-colors data-[active='true']:text-sky-900 data-[active='true']:bg-sky-300 hover:bg-sky-300 border-transparent hover:text-sky-900 active:bg-sky-900 active:text-sky-300 active:border-sky-300">
+                  <button key={l.label} data-active={l.active} onClick={() => goToPage(l.url)} className="text-xs border rounded h-6 w-6 font-medium transition-colors data-[active='true']:text-sky-900 data-[active='true']:bg-sky-300 hover:bg-sky-300 border-transparent hover:text-sky-900 active:bg-sky-900 active:text-sky-300 active:border-sky-300">
                     <span dangerouslySetInnerHTML={{ __html: l.label }} />
                   </button>
                 )).slice(Math.max(books.current_page - 3, 1), Math.min(books.current_page + 3, books.links.length - 1))
@@ -221,8 +226,127 @@ export default function Books({ books }: BookPageProps) {
     </AppLayout >
   );
 }
-type CreateBookFormProps = {
+type UpdateBookFormProps = {
+  trigger: React.ReactNode,
+  book: Book
+}
+type UpdateBookForm = {
+  title: string
+  description: string
+  genre: string
+  release_date: string
+  author: string
+  ISBN: string
+  publisher: string
+  id: string
+}
+const UpdateBookForm: React.FC<UpdateBookFormProps> = ({ trigger, book }) => {
+  const { data, setData, submit, processing, validate, errors, reset } = useForm<UpdateBookForm>(
+    'patch', `/books/${book.id}`,
+    {
+      author: book.author,
+      description: book.description,
+      genre: book.genre,
+      ISBN: book.ISBN,
+      publisher: book.publisher,
+      title: book.title,
+      release_date: book.release_date,
+      id: book.id
+    })
+  const [openModal, setOpenModal] = React.useState(false)
+  const onSubmit: FormEventHandler = (e) => {
+    e.preventDefault();
+    submit({
+      onSuccess: () => {
+        closeModal()
+      },
+      onUnauthorized: (a) => {
+        window.alert("Você não possui permissão para executar essa ação" + a.data)
+      }
+    });
+  }
 
+  const onChange: ChangeEventHandler<HTMLInputElement> = (e) => {
+    setData(
+      e.target.name as keyof UpdateBookForm,
+      e.target.value
+    )
+  }
+  const onBlur: FocusEventHandler<HTMLInputElement> = (e) => {
+    validate(
+      e.target.name as keyof UpdateBookForm
+    )
+  }
+  const closeModal = () => {
+    reset();
+    setOpenModal(false)
+    router.reload({
+      replace: true
+    })
+  }
+  return (
+    <Dialog open={openModal} onOpenChange={open => setOpenModal(open)}>
+      <DialogTrigger asChild>
+        {trigger}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle>
+          Alterar livro {book.title}
+        </DialogTitle>
+        <DialogDescription>
+          É sempre bom tirar os livros da estante e dar uma repaginada! Sinta-se livre pra alterar o que quiser!
+        </DialogDescription>
+
+        <form onSubmit={onSubmit} className="grid grid-cols-3">
+
+          <div className="col-span-full">
+            <Label htmlFor="title">title</Label>
+            <Input value={data.title} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="title" id="title" />
+          </div>
+          <InputError message={errors.title} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="description">description</Label>
+            <Input value={data.description} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="description" id="description" multiple />
+          </div>
+          <InputError message={errors.description} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="genre">genre</Label>
+            <Input value={data.genre} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="genre" id="genre" />
+          </div>
+          <InputError message={errors.genre} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="release_date">release_date</Label>
+            <Input value={data.release_date} onChange={onChange} onBlur={onBlur} className="appearance-none" placeholder="Insira o titulo do livro" name="release_date" id="release_date" type="date" />
+          </div>
+          <InputError message={errors.release_date} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="author">author</Label>
+            <Input value={data.author} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="author" id="author" />
+          </div>
+          <InputError message={errors.author} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="ISBN">ISBN</Label>
+            <Input value={data.ISBN} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="ISBN" id="ISBN" />
+          </div>
+          <InputError message={errors.ISBN} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="publisher">publisher</Label>
+            <Input value={data.publisher} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="publisher" id="publisher" />
+          </div>
+          <InputError message={errors.publisher} className="col-span-full" />
+          <DialogFooter className="col-span-full">
+            <Button type="submit" disabled={processing} variant={"ghost"} className="bg-sky-300 text-sky-800 hover:bg-sky-200 active:bg-sky-200 transition-colors active:text-sky-800 hover:text-sky-800" >
+              {processing ? "Carregando..." : "Editar livro"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+type CreateBookFormProps = {
+  trigger: React.ReactNode
 }
 type CreateBookForm = {
   title: string
@@ -233,7 +357,7 @@ type CreateBookForm = {
   ISBN: string
   publisher: string
 }
-const CreateBookForm: React.FC<CreateBookFormProps> = () => {
+const CreateBookForm: React.FC<CreateBookFormProps> = ({ trigger }) => {
   const { data, setData, submit, processing, validate, errors, reset } = useForm<CreateBookForm>(
     'post', '/books/create',
     {
@@ -258,7 +382,7 @@ const CreateBookForm: React.FC<CreateBookFormProps> = () => {
   const onChange: ChangeEventHandler<HTMLInputElement> = (e) => {
     setData(
       e.target.name as keyof CreateBookForm,
-      e.target.type === 'date' ? new Date(e.target.value).toISOString() : e.target.value
+      e.target.value
     )
   }
   const onBlur: FocusEventHandler<HTMLInputElement> = (e) => {
@@ -276,10 +400,7 @@ const CreateBookForm: React.FC<CreateBookFormProps> = () => {
   return (
     <Dialog open={openModal} onOpenChange={open => setOpenModal(open)}>
       <DialogTrigger asChild>
-        <Button size={"sm"}>
-          <Icon iconNode={PlusIcon} size={8} />
-          Adicionar um livro
-        </Button>
+        {trigger}
       </DialogTrigger>
       <DialogContent>
         <DialogTitle>
@@ -308,7 +429,7 @@ const CreateBookForm: React.FC<CreateBookFormProps> = () => {
           <InputError message={errors.genre} className="col-span-full" />
           <div className="col-span-full">
             <Label htmlFor="release_date">release_date</Label>
-            <Input value={data.release_date} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="release_date" id="release_date" />
+            <Input value={data.release_date} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="release_date" id="release_date" type="date" className="appearance-none" />
           </div>
           <InputError message={errors.release_date} className="col-span-full" />
           <div className="col-span-full">
@@ -327,7 +448,7 @@ const CreateBookForm: React.FC<CreateBookFormProps> = () => {
           </div>
           <InputError message={errors.publisher} className="col-span-full" />
           <DialogFooter className="col-span-full">
-            <Button type="submit" disabled={processing} >
+            <Button type="submit" disabled={processing} variant={"ghost"} className="bg-sky-300 text-sky-950 hover:bg-sky-200 active:bg-sky-200 transition-colors active:text-sky-800 hover:text-sky-800" >
               {processing ? "Carregando..." : "Criar livro"}
             </Button>
           </DialogFooter>
