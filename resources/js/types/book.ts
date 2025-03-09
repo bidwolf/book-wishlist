@@ -7,9 +7,10 @@ export type Book = {
   title: string
   description: string
   genre: Genres
-  release_date: number
+  release_date: string
   author: string
   ISBN: string
   publisher: string
   url_cover?: string
+  id: string;
 };
