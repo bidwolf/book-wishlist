@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Book;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Book\StoreBookRequest;
+use App\Http\Requests\Book\UpdateBookRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Models\Book;
-use Illuminate\Http\RedirectResponse;
 
 class BookController extends Controller
 {
@@ -40,10 +40,24 @@ class BookController extends Controller
       'book' => $current_book
     ]);
   }
-  public function create(StoreBookRequest $request): RedirectResponse
+  public function create(StoreBookRequest $request)
   {
     $validated = $request->validated();
+    $validated['user_id'] = $request->user()->id;
     $created_book = Book::create($validated);
     return Inertia::location('/books/' . $created_book->id);
+  }
+  public function update(UpdateBookRequest $request)
+  {
+    $validated = $request->validated();
+    $updated_book = Book::find($request['book'])
+      ->update($validated);
+
+    return response()->json(
+      [
+        'book' => $updated_book,
+        'message' => "livros atualizados com sucesso"
+      ]
+    );
   }
 }
