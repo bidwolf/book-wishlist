@@ -1,36 +1,55 @@
 import { Icon } from "@/components/icon";
+import InputError from "@/components/input-error";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuTrigger, DropdownMenu, DropdownMenuItem, DropdownMenuGroup, DropdownMenuContent } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import AppLayout from "@/layouts/app-layout";
-import { Book, BreadcrumbItem } from "@/types";
+import { Book, BreadcrumbItem, Pagination } from "@/types";
 import { Field } from "@headlessui/react";
 import { Head, router } from "@inertiajs/react";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useForm } from 'laravel-precognition-react';
 import { BookXIcon, ChevronLeft, ChevronRight, PencilIcon, PlusIcon, SearchIcon, SettingsIcon, TrashIcon, XIcon } from "lucide-react";
-import { useCallback } from "react";
+import React, { ChangeEventHandler, FocusEventHandler, FormEventHandler, useCallback } from "react";
 
-type BookPageProps = { books: Book[], total_pages: number }
-export default function Books({ books, total_pages }: BookPageProps) {
+type BookPageProps = { books: { data: Book[] } & Pagination }
+export default function Books({ books }: BookPageProps) {
+  console.log(books)
   const breadcrumbs: BreadcrumbItem[] = [
     {
       title: 'Books',
       href: '/books',
     },
   ];
-  let params = new URLSearchParams(window.location.search)
+  const [query, setQuery] = React.useState('');
+  const deferredQuery = React.useDeferredValue(query);
   const goToNextPage = useCallback(() => {
-    const currentPage = Number(params.get('page') || 1)
-    router.get(
-      `/books?page=${currentPage + 1}`
-    )
-  }, [params, router])
+    if (books.next_page_url) {
+      router.get(
+        books.next_page_url, { search: deferredQuery }, { preserveState: true, replace: true }
+      )
+    }
+  }, [books, deferredQuery])
+  const goToPage = useCallback((url: string) => {
+    router.get(url, { search: deferredQuery }, { preserveState: true, replace: true })
+  }, [deferredQuery])
   const goToPreviousPage = useCallback(() => {
-    const currentPage = Number(params.get('page') || 1)
-    router.get(
-      `/books?page=${currentPage - 1}`
-    )
-  }, [params, router])
+    if (books.prev_page_url) {
+      router.get(
+        books.prev_page_url, { search: deferredQuery }, { preserveState: true, replace: true }
+      )
+    }
+  }, [books, deferredQuery])
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      router.get('/books', { search: deferredQuery }, { preserveState: true, replace: true });
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [deferredQuery]);
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Books">
@@ -43,21 +62,18 @@ export default function Books({ books, total_pages }: BookPageProps) {
           // This is for responsive layouts greater than medium screens since tables are not good enough for mobile
            <table className="hidden md:table text-xs table-auto rounded-2xl overflow-hidden w-full max-w-2xl shadow"> 
            */}
-          <table className="text-xs table-auto rounded-2xl overflow-hidden min-w-[80vw] shadow">
+          <table className="text-xs table-auto rounded-t-2xl overflow-hidden min-w-[80vw] shadow">
             <caption className="bg-accent text-accent-foreground text-left p-4">
               <div className="flex gap-2 justify-between items-center">
                 <h1 className="text-lg font-semibold">Books</h1>
                 <Field>
                   <Label className="relative group">
-                    <Input required placeholder="Pesquisar livros" type="text" name="search" className="max-w-64 bg-accent-foreground/20 appearance-none pr-8 hover:bg-accent-foreground/5 transition-colors" />
+                    <Input required placeholder="Pesquisar livros" type="text" name="search" value={deferredQuery} onChange={e => setQuery(e.target.value)} className="max-w-64 bg-accent-foreground/20 appearance-none pr-8 hover:bg-accent-foreground/5 transition-colors" />
                     <Icon iconNode={SearchIcon} size={8} className="absolute right-1 top-[50%] -translate-[50%] opacity-0 invisible duration-500 transition-opacity group-has-placeholder-shown:visible group-has-placeholder-shown:opacity-100 " />
                     <Icon iconNode={XIcon} size={8} className="absolute right-1 top-[50%] -translate-[50%] visible duration-500 transition-opacity group-has-placeholder-shown:invisible group-has-placeholder-shown:opacity-0 group-has-autofill:text-emerald-500" />
                   </Label>
                 </Field>
-                <Button size={"sm"}>
-                  <Icon iconNode={PlusIcon} size={8} />
-                  Adicionar um livro
-                </Button>
+                <CreateBookForm />
               </div>
             </caption>
             <thead className="text-center border-b border-foreground/20 bg-accent text-accent-foreground ">
@@ -71,7 +87,7 @@ export default function Books({ books, total_pages }: BookPageProps) {
               </tr>
             </thead>
             <tbody className=" *:bg-accent *:even:bg-accent/80">
-              {books.length > 0 ? books.map(book => (
+              {books.data.length > 0 ? books.data.map(book => (
                 <tr className="*:p-2 hover:bg-gradient-to-tr from-accent to-primary/10 via-emerald-950/10 hover:cursor-pointer" key={book.ISBN}>
                   <td onClick={
                     (e) => {
@@ -153,35 +169,42 @@ export default function Books({ books, total_pages }: BookPageProps) {
                 </tr>
               }
             </tbody>
-            <tfoot className="text-center bg-accent text-accent-foreground border-t border-foreground/20">
-              <tr>
-                <th scope="row" colSpan={1}>
-                  Pagination
-                </th>
-                <td />
-                <td >
-                  <button disabled={Number(params.get("page") || 1) <= 1} className="p-4 w-full flex justify-evenly text-center hover:not-disabled:opacity-50 hover:not-disabled:cursor-pointer disabled:opacity-10" onClick={goToPreviousPage}>
-                    <Icon iconNode={ChevronLeft} size={8} />
-                    <span className="text-xs sr-only sm:not-sr-only">
-                      Previous
-                    </span>
-                  </button>
-                </td>
-                <td className="text-center">
-                  <strong>Page {params.get("page") || 1} of {total_pages}</strong>
-                </td>
-                <td >
-                  <button disabled={Number(params.get("page") || 1) >= total_pages} className="p-4 w-full flex justify-evenly text-center hover:not-disabled:opacity-50 hover:not-disabled:cursor-pointer disabled:opacity-10" onClick={goToNextPage}>
-                    <span className="text-xs sr-only sm:not-sr-only">
-                      Next
-                    </span>
-                    <Icon iconNode={ChevronRight} size={8} />
-                  </button>
-                </td>
-                <td />
-              </tr>
-            </tfoot>
           </table>
+          <div className="text-center bg-accent text-accent-foreground border-t border-foreground/20 min-w-[80vw] rounded-b-2xl px-4 grid grid-cols-6 items-center">
+            <p>
+              Pagination
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              {
+                books.links.map(l => (
+                  <button data-active={l.active} onClick={() => goToPage(l.url)} className="text-xs border rounded h-6 w-6 font-medium transition-colors data-[active='true']:text-sky-900 data-[active='true']:bg-sky-300 hover:bg-sky-300 border-transparent hover:text-sky-900 active:bg-sky-900 active:text-sky-300 active:border-sky-300">
+                    <span dangerouslySetInnerHTML={{ __html: l.label }} />
+                  </button>
+                )).slice(Math.max(books.current_page - 3, 1), Math.min(books.current_page + 3, books.links.length - 1))
+              }
+            </div>
+            <div className="flex items-center gap-8 col-span-4">
+              <div >
+                <button disabled={books.current_page === 1} className="p-4 w-full flex justify-evenly text-center hover:not-disabled:opacity-50 hover:not-disabled:cursor-pointer disabled:opacity-10" onClick={goToPreviousPage}>
+                  <Icon iconNode={ChevronLeft} size={8} />
+                  <span className="text-xs sr-only sm:not-sr-only">
+                    Anterior
+                  </span>
+                </button>
+              </div>
+              <div className="text-center">
+                <strong>{Math.min(books.per_page * books.current_page, books.total)} de {books.total}</strong>
+              </div>
+              <div >
+                <button disabled={!Boolean(books.next_page_url)} className="p-4 w-full flex justify-evenly text-center hover:not-disabled:opacity-50 hover:not-disabled:cursor-pointer disabled:opacity-10" onClick={goToNextPage}>
+                  <span className="text-xs sr-only sm:not-sr-only">
+                    Próximo
+                  </span>
+                  <Icon iconNode={ChevronRight} size={8} />
+                </button>
+              </div>
+            </div>
+          </div>
           {
             // Section for mobile view. Tables are not good enough for working in that case.
             /* <article className="grid grid-cols-2 md:hidden">
@@ -189,12 +212,127 @@ export default function Books({ books, total_pages }: BookPageProps) {
                 Title:
               </dt>
               <dd>
-  
+   
               </dd>
             </article> */
           }
         </div>
       </div>
-    </AppLayout>
+    </AppLayout >
   );
+}
+type CreateBookFormProps = {
+
+}
+type CreateBookForm = {
+  title: string
+  description: string
+  genre: string
+  release_date: string
+  author: string
+  ISBN: string
+  publisher: string
+}
+const CreateBookForm: React.FC<CreateBookFormProps> = () => {
+  const { data, setData, submit, processing, validate, errors, reset } = useForm<CreateBookForm>(
+    'post', '/books/create',
+    {
+      author: '',
+      description: '',
+      genre: '',
+      ISBN: '',
+      publisher: '',
+      title: '',
+      release_date: ''
+    })
+  const [openModal, setOpenModal] = React.useState(false)
+  const onSubmit: FormEventHandler = (e) => {
+    e.preventDefault();
+    submit({
+      onSuccess: () => {
+        closeModal()
+      }
+    });
+  }
+
+  const onChange: ChangeEventHandler<HTMLInputElement> = (e) => {
+    setData(
+      e.target.name as keyof CreateBookForm,
+      e.target.type === 'date' ? new Date(e.target.value).toISOString() : e.target.value
+    )
+  }
+  const onBlur: FocusEventHandler<HTMLInputElement> = (e) => {
+    validate(
+      e.target.name as keyof CreateBookForm
+    )
+  }
+  const closeModal = () => {
+    reset();
+    setOpenModal(false)
+    router.reload({
+      replace: true
+    })
+  }
+  return (
+    <Dialog open={openModal} onOpenChange={open => setOpenModal(open)}>
+      <DialogTrigger asChild>
+        <Button size={"sm"}>
+          <Icon iconNode={PlusIcon} size={8} />
+          Adicionar um livro
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle>
+          Crie um livro
+        </DialogTitle>
+        <DialogDescription>
+          Sua livraria só vai estar completa depois de adicionar seus livros favoritos!
+        </DialogDescription>
+
+        <form onSubmit={onSubmit} className="grid grid-cols-3">
+
+          <div className="col-span-full">
+            <Label htmlFor="title">title</Label>
+            <Input value={data.title} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="title" id="title" />
+          </div>
+          <InputError message={errors.title} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="description">description</Label>
+            <Input value={data.description} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="description" id="description" multiple />
+          </div>
+          <InputError message={errors.description} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="genre">genre</Label>
+            <Input value={data.genre} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="genre" id="genre" />
+          </div>
+          <InputError message={errors.genre} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="release_date">release_date</Label>
+            <Input value={data.release_date} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="release_date" id="release_date" />
+          </div>
+          <InputError message={errors.release_date} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="author">author</Label>
+            <Input value={data.author} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="author" id="author" />
+          </div>
+          <InputError message={errors.author} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="ISBN">ISBN</Label>
+            <Input value={data.ISBN} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="ISBN" id="ISBN" />
+          </div>
+          <InputError message={errors.ISBN} className="col-span-full" />
+          <div className="col-span-full">
+            <Label htmlFor="publisher">publisher</Label>
+            <Input value={data.publisher} onChange={onChange} onBlur={onBlur} placeholder="Insira o titulo do livro" name="publisher" id="publisher" />
+          </div>
+          <InputError message={errors.publisher} className="col-span-full" />
+          <DialogFooter className="col-span-full">
+            <Button type="submit" disabled={processing} >
+              {processing ? "Carregando..." : "Criar livro"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }
