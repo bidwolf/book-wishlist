@@ -40,3 +40,4 @@ export interface User {
 }
 
 export * from './book';
+export * from './pagination';
