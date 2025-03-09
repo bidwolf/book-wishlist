@@ -56,8 +56,20 @@ class BookController extends Controller
     return response()->json(
       [
         'book' => $updated_book,
-        'message' => "livros atualizados com sucesso"
+        'message' => "livros atualizados com sucesso."
       ]
     );
+  }
+  public function destroy(Request $request)
+  {
+    $book = Book::where('id', $request['book'])->first();
+    if ($book) {
+      $request->user()->can('delete', $book);
+      $deleted = $book->delete();
+      $book->save();
+      return Inertia::location('/books');
+    } else {
+      return Inertia::location('/books');
+    }
   }
 }
