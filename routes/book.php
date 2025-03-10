@@ -15,4 +15,5 @@ Route::middleware('auth')->group(function () {
   Route::patch('books/{book}', [BookController::class, 'update'])
     ->middleware([HandlePrecognitiveRequests::class])
     ->name('books.update');
+  Route::delete('books/{book}', [BookController::class, 'destroy'])->name('books.destroy');
 });
