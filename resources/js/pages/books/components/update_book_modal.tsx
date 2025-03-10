@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label"
 import { Book } from "@/types"
 import { router } from "@inertiajs/react"
 import { useForm } from "laravel-precognition-react"
+import { VerifiedIcon } from "lucide-react"
 import React, { ChangeEventHandler, FocusEventHandler, FormEventHandler } from "react"
+import { toast } from "sonner"
 
 type UpdateBookFormProps = {
   trigger: React.ReactNode,
@@ -32,7 +34,7 @@ export const UpdateBookForm: React.FC<UpdateBookFormProps> = ({ trigger, book })
       ISBN: book.ISBN,
       publisher: book.publisher,
       title: book.title,
-      release_date: book.release_date,
+      release_date: new Date(book.release_date).toISOString().split('T')[0],
       id: book.id
     })
   const [openModal, setOpenModal] = React.useState(false)
@@ -40,6 +42,9 @@ export const UpdateBookForm: React.FC<UpdateBookFormProps> = ({ trigger, book })
     e.preventDefault();
     submit({
       onSuccess: () => {
+        toast("Livro alterado com sucesso!", {
+          icon: <VerifiedIcon />
+        })
         closeModal()
       },
       onUnauthorized: (a) => {

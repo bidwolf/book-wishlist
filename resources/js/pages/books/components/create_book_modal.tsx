@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { router } from "@inertiajs/react"
 import { useForm } from "laravel-precognition-react"
+import { VerifiedIcon } from "lucide-react"
 import React, { ChangeEventHandler, FocusEventHandler, FormEventHandler } from "react"
+import { toast } from "sonner"
 
 type CreateBookFormProps = {
   trigger: React.ReactNode
@@ -36,6 +38,9 @@ export const CreateBookForm: React.FC<CreateBookFormProps> = ({ trigger }) => {
     e.preventDefault();
     submit({
       onSuccess: () => {
+        toast("Livro criado com sucesso!", {
+          icon: <VerifiedIcon />
+        })
         closeModal()
       }
     });

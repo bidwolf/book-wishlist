@@ -2,7 +2,9 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Book } from "@/types"
 import { router, useForm } from "@inertiajs/react"
+import { TrashIcon } from "lucide-react"
 import React, { FormEventHandler } from "react"
+import { toast } from "sonner"
 
 type DeleteBookFormProps = {
   trigger: React.ReactNode,
@@ -14,8 +16,18 @@ export const DeleteBookForm: React.FC<DeleteBookFormProps> = ({ trigger, book })
   const onSubmit: FormEventHandler = (e) => {
     e.preventDefault();
     destroy(route('books.destroy', book.id), {
-      preserveScroll: true, onError: (error) => {
-        window.alert(error)
+      preserveScroll: true,
+      onSuccess: () => {
+        toast("O livro foi deletado com sucesso!", {
+          icon: <TrashIcon />,
+          className: "bg-red-500 text-white"
+        })
+        closeModal()
+      },
+      onError: (error) => {
+        console.error(error)
+        toast("Não foi possível deletar este livro")
+        closeModal()
       }
     })
   }
