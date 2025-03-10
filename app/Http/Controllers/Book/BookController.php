@@ -66,10 +66,7 @@ class BookController extends Controller
     if ($book) {
       $request->user()->can('delete', $book);
       $deleted = $book->delete();
-      $book->save();
-      return Inertia::location('/books');
-    } else {
-      return Inertia::location('/books');
     }
+    return to_route('books.get_all');
   }
 }
